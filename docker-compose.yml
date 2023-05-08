@@ -1,0 +1,58 @@
+version: '3.8'
+
+
+services:
+  api:
+    build:
+      context: ./SocialNetwork
+      dockerfile: Dockerfile
+    container_name: api
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./SocialNetwork/:/usr/src/SocialNetwork/
+    ports:
+      - '8000:8000'
+    networks:
+      - net
+    env_file:
+      - ./SocialNetwork/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/admin"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    depends_on:
+      - api_db
+    
+  api_db:
+    image: postgres:15.2-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    container_name: postgresql
+    env_file:
+      - ./SocialNetwork/.db.env
+    networks:
+      - net
+  bot:
+    build:
+      context: ./SocialNetwork
+      dockerfile: Dockerfile.bot
+    container_name: bot
+    volumes:
+      - ./SocialNetwork/bot/:/usr/src/bot/
+    networks:
+      - net
+    env_file:
+      - ./SocialNetwork/.bot.env
+    depends_on:
+      api:
+        condition: service_healthy
+    
+
+volumes:
+  postgres_data:
+
+networks:
+  net:
+    driver: bridge
